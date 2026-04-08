@@ -1,0 +1,72 @@
+# ============================================================
+# A 股量化回测系统 - 策略配置模板
+# ============================================================
+# 用法: python run_backtest.py --config strategy_template.yaml
+# ============================================================
+#
+# 所有策略通过 YAML 配置定义，由 AShareStrategy 基类执行。
+# 策略加载器（run_backtest.py 中的 load_strategy_from_config）
+# 会根据配置动态构建策略类。
+#
+# 信号类型说明:
+#   cross_over: 指标1 从下方穿过指标2（金叉/死叉）
+#   cross_below: 指标1 从上方穿过指标2
+#   gt: 指标值 > 阈值
+#   lt: 指标值 < 阈值
+#
+# 可用指标（在策略中直接通过 self.data.指标名 访问）:
+#   close, open, high, low, volume  — 原始 OHLCV 数据
+#   sma_5, sma_10, sma_20, sma_60  — 简单均线（需在 params.indicate 中配置）
+#   rsi_14                               — RSI（需配置）
+#   macd, macd_signal, macd_hist        — MACD（需配置）
+#   atr_14                               — ATR（需配置）
+#
+# ============================================================
+
+strategy:
+  name: "模板策略"          # 策略名称
+
+# 策略参数
+params:
+  # 仓位控制
+  max_position_ratio: 0.1    # 单票最大持仓比例（资金 * 10%）
+  min_buy_amount: 100.0      # 最小买入金额（元）
+
+  # 趋势过滤
+  trend_period: 50           # 趋势均线周期
+
+  # RSI 参数
+  rsi_period: 14
+  rsi_level: 50             # RSI > 50 才做多
+
+  # 最大持仓天数
+  max_hold_days: 20
+
+# 信号定义（全部条件必须同时满足才触发）
+signals:
+  buy:
+    # 示例1: 金叉（快速均线 > 慢速均线 且 前一日快线 <= 慢线）
+    # - type: cross_over
+    #   indicator1: sma_fast
+    #   indicator2: sma_slow
+    #
+    # 示例2: RSI 读数
+    # - type: gt
+    #   ind: rsi
+    #   threshold: 50
+    #
+    # 示例3: 动量 > 0
+    # - type: gt
+    #   ind: momentum
+    #   threshold: 0
+
+  sell:
+    # 示例1: 死叉
+    # - type: cross_below
+    #   indicator1: sma_fast
+    #   indicator2: sma_slow
+    #
+    # 示例2: 止损（动量 < -5%）
+    # - type: lt
+    #   ind: momentum
+    #   threshold: -5

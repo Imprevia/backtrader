@@ -1,0 +1,20 @@
+# Logs
+logs
+*.log
+
+# venv
+.venv
+.venv1
+
+.DS_Store
+
+# Editor directories and files
+.vscode
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+/data_cache/
