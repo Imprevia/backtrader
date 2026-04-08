@@ -18,14 +18,14 @@ class MAGoldenCross3_16_Complete(AShareStrategy):
         ("ma_fast_period", 3),
         ("ma_slow_period", 25),  # 16 → 25（更长周期更稳定）
         ("trend_ma_period", 20),
-        ("stop_loss_percent", 5.0),  # 7.0 → 5.0（收紧止损提高胜率）
+        ("stop_loss_percent", 5.0),  # 4.5 → 5.0（恢复止损给波动空间）
         ("recovery_days", 3),  # 保持3日
         # ==========================================================
-        # ATR止盈参数（平衡止盈目标）
+        # ATR止盈参数（推荐组合优化）
         # ==========================================================
         ("atr_period", 14),  # 保持14
-        ("atr_partial_mult", 2.5),  # 3.0 → 2.5（2.5×ATR减半仓）
-        ("atr_full_mult", 4.5),  # 4.0 → 4.5（4.5×ATR完全止盈）
+        ("atr_partial_mult", 2.5),  # 3.0 → 2.5（2.5×ATR减半仓锁定利润）
+        ("atr_full_mult", 4.0),  # 5.0 → 4.0（4×ATR完全止盈，减少回吐）
         # ==========================================================
         # 选股参数（收紧以提高胜率）
         # ==========================================================
@@ -42,7 +42,7 @@ class MAGoldenCross3_16_Complete(AShareStrategy):
         # 过滤参数（提高过滤要求）
         # ==========================================================
         ("rsi_period", 14),  # 保持14
-        ("rsi_threshold", 30),  # 25 → 30（提高RSI门槛）
+        ("rsi_threshold", 30),  # 恢复 30（RSI 28 版本导致交易质量下降）
         ("use_rsi_filter", True),  # 保持True
         ("use_trend_filter", True),  # 保持True（开启趋势过滤）
         ("trend_confirmation_bars", 5),  # 3 → 5（严格趋势确认）
@@ -51,9 +51,9 @@ class MAGoldenCross3_16_Complete(AShareStrategy):
         # ==========================================================
         ("max_bias_for_holding", 15.0),  # 20.0 → 15.0（收紧乖离率）
         # ==========================================================
-        # 仓位参数（平衡配置）
+        # 仓位参数（推荐组合优化）
         # ==========================================================
-        ("max_position_ratio", 0.20),  # 0.15 → 0.20（仓位提到20%）
+        ("max_position_ratio", 0.25),  # 0.20 → 0.25（仓位提到25%）
     )
 
     def __init__(self):
@@ -192,18 +192,18 @@ class MAGoldenCross3_16_Complete(AShareStrategy):
         current_bar,
     ):
         """
-        选股筛选：识别即将金叉的候选股，满足条件则加入待买列表（优化版）
+        选股筛选：识别刚发生金叉的候选股，满足条件则加入待买列表
 
         选股条件：
-        1. 趋势确认：20日线向上 + 反弹5%-15%
-        2. RSI过滤：RSI>40（动态计算避免除零）
-        3. 即将金叉：快线接近慢线（差距<2%）
-        4. 放量配合：前3日有放量1.5倍+
+        1. 趋势确认：20日线向上 + 反弹4%-25%
+        2. RSI过滤：RSI>30（动态计算避免除零）
+        3. 金叉刚发生：3日均线从下方向上穿越25日均线
+        4. 放量配合：金叉当日或前3日有放量1.3倍+
         """
         code = data._name
 
         # ==========================================================
-        # 死叉检测：如果3日均线下穿16日均线，移除候选名单
+        # 死叉检测：如果3日均线下穿25日均线，移除候选名单
         # ==========================================================
         if code in self._pending_buy_codes:
             ma_fast_val = ma_fast[0]
@@ -267,7 +267,7 @@ class MAGoldenCross3_16_Complete(AShareStrategy):
             return
 
         # ==========================================================
-        # 条件4: 金叉发生（3日均线从下方向上穿越16日均线）
+        # 条件4: 金叉刚发生（3日均线从下方向上穿越25日均线）
         # ==========================================================
         if ma_slow_val <= 0:
             self.log(f"[DEBUG] {code} 均线值异常过滤", level=logging.DEBUG)
@@ -280,14 +280,47 @@ class MAGoldenCross3_16_Complete(AShareStrategy):
             self.log(f"[DEBUG] {code} 历史均线数据不足", level=logging.DEBUG)
             return
 
+        # 金叉刚发生：前一天快线在慢线下方，当天快线在慢线上方
         golden_cross = ma_fast_prev <= ma_slow_prev and ma_fast_val > ma_slow_val
-
         if not golden_cross:
             self.log(f"[DEBUG] {code} 金叉未形成", level=logging.DEBUG)
             return
 
+        ma_fast_prev = self._get_prev_ma_fast(data)
+        ma_slow_prev = self._get_prev_ma_slow(data)
+
+        if ma_fast_prev is None or ma_slow_prev is None:
+            self.log(f"[DEBUG] {code} 历史均线数据不足", level=logging.DEBUG)
+            return
+
+        # 金叉即将发生：快线在慢线下方，且快线接近慢线（差距 < 3%）
+        if ma_slow_val <= 0:
+            self.log(f"[DEBUG] {code} 均线值异常过滤", level=logging.DEBUG)
+            return
+
+        ma_fast_prev = self._get_prev_ma_fast(data)
+        ma_slow_prev = self._get_prev_ma_slow(data)
+
+        if ma_fast_prev is None or ma_slow_prev is None:
+            self.log(f"[DEBUG] {code} 历史均线数据不足", level=logging.DEBUG)
+            return
+
+        # 快线在慢线下方（尚未金叉）
+        if ma_fast_prev >= ma_slow_prev:
+            self.log(f"[DEBUG] {code} 快线未在慢线下方", level=logging.DEBUG)
+            return
+
+        # 快线接近慢线，差距 < 3%
+        gap_ratio = (ma_slow_val - ma_fast_val) / ma_slow_val
+        if gap_ratio >= 0.03:
+            self.log(
+                f"[DEBUG] {code} 快线远离慢线(差距{gap_ratio * 100:.1f}%)",
+                level=logging.DEBUG,
+            )
+            return
+
         # ==========================================================
-        # 条件5: 成交量配合（金叉前3日内有放量1.5倍+）
+        # 条件5: 成交量配合（金叉前3日内有放量1.3倍+）
         # ==========================================================
         if not self._check_volume_surge(data, volume_sma):
             self.log(f"[DEBUG] {code} 成交量未放量", level=logging.DEBUG)
@@ -298,7 +331,7 @@ class MAGoldenCross3_16_Complete(AShareStrategy):
         # ==========================================================
         score = self._calculate_candidate_score(data, current_price, trend_ma)
 
-        # 记录待买入候选股（金叉即将发生）
+        # 记录待买入候选股（金叉刚发生）
         self._pending_buy_codes[code] = (score, current_bar, current_price, 1)
         self._candidate_scores[code] = score
         self.log(
@@ -447,14 +480,15 @@ class MAGoldenCross3_16_Complete(AShareStrategy):
         买入信号检查
 
         买入条件：
-        1. 股票在待买列表中（金叉已在上一bar确认）
-        2. 收盘价站稳在16日均线上方
+        1. 股票在待买列表中（T日金叉已确认）
+        2. 收盘价站稳在25日均线上方
         """
         if code not in self._pending_buy_codes:
             return False
 
         ma_slow_val = ma_slow[0]
-        if ma_slow_val <= 0:
+        ma_fast_val = ma_fast[0]
+        if ma_slow_val <= 0 or ma_fast_val <= 0:
             return False
 
         if current_price <= ma_slow_val:
@@ -464,7 +498,7 @@ class MAGoldenCross3_16_Complete(AShareStrategy):
         if code not in self._golden_cross_bars:
             self._golden_cross_bars[code] = len(self)
             self.log(
-                f"[金叉确认] {code} @ {current_price:.2f}, 16日线:{ma_slow_val:.2f}, 等{pending_days}日"
+                f"[金叉确认] {code} @ {current_price:.2f}, 25日线:{ma_slow_val:.2f}, 等{pending_days}日"
             )
 
         self._pending_buy_codes.pop(code, None)
