@@ -135,6 +135,8 @@ class BacktestRunner:
         strategy_params: Optional[dict] = None,
         max_stocks: Optional[int] = None,
         verbose: bool = True,
+        dynamic_split: bool = False,
+        seed: Optional[int] = None,
     ) -> tuple:
         """
         运行全量测试（训练集+验证集）
@@ -144,12 +146,17 @@ class BacktestRunner:
             strategy_params: 策略参数
             max_stocks: 最大股票数量（用于测试模式）
             verbose: 是否详细输出
+            dynamic_split: 是否动态划分数据（防过拟合）
+            seed: 动态划分随机种子
 
         Returns:
             (train_report, val_report) 元组
         """
-        # 加载数据
-        train_data, val_data = load_cached_data(max_stocks=max_stocks)
+        train_data, val_data = load_cached_data(
+            max_stocks=max_stocks,
+            dynamic_split=dynamic_split,
+            seed=seed,
+        )
 
         # 训练集回测
         print("\n" + "#" * 70)
@@ -194,9 +201,15 @@ class BacktestRunner:
         strategy_params: Optional[dict] = None,
         max_stocks: Optional[int] = None,
         verbose: bool = True,
+        dynamic_split: bool = False,
+        seed: Optional[int] = None,
     ) -> Optional[BacktestReport]:
         """运行仅训练集回测"""
-        train_data, _ = load_cached_data(max_stocks=max_stocks)
+        train_data, _ = load_cached_data(
+            max_stocks=max_stocks,
+            dynamic_split=dynamic_split,
+            seed=seed,
+        )
         report = self.run_single_backtest(
             train_data,
             strategy_class,
@@ -238,9 +251,15 @@ class BacktestRunner:
         strategy_params: Optional[dict] = None,
         max_stocks: Optional[int] = None,
         verbose: bool = True,
+        dynamic_split: bool = False,
+        seed: Optional[int] = None,
     ) -> Optional[BacktestReport]:
         """运行仅验证集回测"""
-        _, val_data = load_cached_data(max_stocks=max_stocks)
+        _, val_data = load_cached_data(
+            max_stocks=max_stocks,
+            dynamic_split=dynamic_split,
+            seed=seed,
+        )
         report = self.run_single_backtest(
             val_data,
             strategy_class,
@@ -285,6 +304,8 @@ def run_backtest_with_config(
     max_stocks: Optional[int] = None,
     initial_cash: float = 20000.0,
     quiet: bool = False,
+    dynamic_split: bool = False,
+    seed: Optional[int] = None,
 ):
     """
     统一的回测运行入口函数
@@ -297,6 +318,8 @@ def run_backtest_with_config(
         max_stocks: 最大股票数量（简单测试模式）
         initial_cash: 初始资金
         quiet: 静默模式
+        dynamic_split: 是否动态划分数据（防过拟合，默认False保持兼容）
+        seed: 动态划分随机种子（None=每次不同，int=固定可复现）
     """
     from strategies import load_strategy_by_name
     from run_backtest import load_strategy_from_config, SMACrossStrategy
@@ -349,8 +372,26 @@ def run_backtest_with_config(
     # 运行回测
     verbose = not quiet
     if train_only:
-        runner.run_train_only(strategy_class, max_stocks=max_stocks, verbose=verbose)
+        runner.run_train_only(
+            strategy_class,
+            max_stocks=max_stocks,
+            verbose=verbose,
+            dynamic_split=dynamic_split,
+            seed=seed,
+        )
     elif val_only:
-        runner.run_val_only(strategy_class, max_stocks=max_stocks, verbose=verbose)
+        runner.run_val_only(
+            strategy_class,
+            max_stocks=max_stocks,
+            verbose=verbose,
+            dynamic_split=dynamic_split,
+            seed=seed,
+        )
     else:
-        runner.run_full_test(strategy_class, max_stocks=max_stocks, verbose=verbose)
+        runner.run_full_test(
+            strategy_class,
+            max_stocks=max_stocks,
+            verbose=verbose,
+            dynamic_split=dynamic_split,
+            seed=seed,
+        )

@@ -30,8 +30,30 @@ from log_manager import LogManager, get_backtest_results_from_report
 CACHE_DIR = Path("data_cache")
 
 
-def load_cached_data(max_stocks: Optional[int] = None, require_full_range: bool = True):
-    """从缓存加载训练集和验证集数据。"""
+def load_cached_data(
+    max_stocks: Optional[int] = None,
+    require_full_range: bool = True,
+    dynamic_split: bool = False,
+    seed: Optional[int] = None,
+):
+    """
+    从缓存加载训练集和验证集数据。
+
+    Args:
+        max_stocks: 最大股票数量
+        require_full_range: 是否要求2020年前有数据
+        dynamic_split: 是否每次回测动态划分（防过拟合）
+        seed: 动态划分时的随机种子（None=每次不同，int=固定可复现）
+    """
+    if dynamic_split:
+        from data_pipeline.dynamic_split import dynamic_split_and_load
+
+        return dynamic_split_and_load(
+            train_ratio=0.7,
+            seed=seed,
+            max_stocks=max_stocks,
+        )
+
     train_path = CACHE_DIR / "train_data.pkl"
     val_path = CACHE_DIR / "val_data.pkl"
 
@@ -57,7 +79,6 @@ def load_cached_data(max_stocks: Optional[int] = None, require_full_range: bool 
             start = df["datetime"].min()
             if start <= common_date:
                 train_filtered[code] = df
-        # 修复：对验证集也做日期过滤，保证训练集和验证集都使用2020年前有数据的股票
         val_filtered = {}
         for code, df in val_data.items():
             if df is None or df.empty:
@@ -663,6 +684,15 @@ def parse_args():
     parser.add_argument(
         "--workers", type=int, default=None, help="并行工作进程数（默认为CPU核心数-1）"
     )
+    parser.add_argument(
+        "--dynamic-split", action="store_true", help="每次回测动态划分数据（防过拟合）"
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="动态划分随机种子（None=每次不同，int=固定可复现）",
+    )
     return parser.parse_args()
 
 
@@ -682,6 +712,8 @@ def main():
             initial_cash=args.cash,
             quiet=args.quiet,
             max_workers=args.workers,
+            dynamic_split=args.dynamic_split,
+            seed=args.seed,
         )
     else:
         from backtest_runner import run_backtest_with_config
@@ -694,6 +726,8 @@ def main():
             max_stocks=args.max_stocks,
             initial_cash=args.cash,
             quiet=args.quiet,
+            dynamic_split=args.dynamic_split,
+            seed=args.seed,
         )
 
     print("\n回测完成。")

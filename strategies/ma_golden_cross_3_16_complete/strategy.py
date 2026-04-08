@@ -18,7 +18,7 @@ class MAGoldenCross3_16_Complete(AShareStrategy):
         ("ma_fast_period", 3),
         ("ma_slow_period", 25),  # 16 → 25（更长周期更稳定）
         ("trend_ma_period", 20),
-        ("stop_loss_percent", 5.0),  # 4.5 → 5.0（恢复止损给波动空间）
+        ("stop_loss_percent", 4.0),  # 5.0→4.0（温和止损）
         ("recovery_days", 3),  # 保持3日
         # ==========================================================
         # ATR止盈参数（推荐组合优化）
@@ -42,7 +42,7 @@ class MAGoldenCross3_16_Complete(AShareStrategy):
         # 过滤参数（提高过滤要求）
         # ==========================================================
         ("rsi_period", 14),  # 保持14
-        ("rsi_threshold", 30),  # 恢复 30（RSI 28 版本导致交易质量下降）
+        ("rsi_threshold", 35),  # 30→35（温和提升胜率）
         ("use_rsi_filter", True),  # 保持True
         ("use_trend_filter", True),  # 保持True（开启趋势过滤）
         ("trend_confirmation_bars", 5),  # 3 → 5（严格趋势确认）
@@ -53,7 +53,7 @@ class MAGoldenCross3_16_Complete(AShareStrategy):
         # ==========================================================
         # 仓位参数（推荐组合优化）
         # ==========================================================
-        ("max_position_ratio", 0.25),  # 0.20 → 0.25（仓位提到25%）
+        ("max_position_ratio", 0.20),  # 0.25→0.20（适度降低仓位）
     )
 
     def __init__(self):

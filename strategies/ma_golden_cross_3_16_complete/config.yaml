@@ -8,7 +8,7 @@ strategy_params:
   trend_ma_period: 20     # 趋势确认均线周期（20日）
 
   # 止损参数（给波动留出呼吸空间）
-  stop_loss_percent: 5.0   # 5.0%（保持）
+  stop_loss_percent: 3.5    # 5.0→3.5（更敏感止损，减少单笔亏损）
   recovery_days: 3          # 止损恢复天数（3日内无法收回则止损）
 
   # ATR止盈参数（推荐组合优化 - 提前锁定利润）
@@ -31,14 +31,14 @@ strategy_params:
 
   # 过滤参数（保持）
   rsi_period: 14               # RSI周期
-  rsi_threshold: 30            # 30（保持）
+  rsi_threshold: 38           # 30→38（提高胜率，只做强势股）
   use_rsi_filter: True        # 启用RSI过滤
   use_trend_filter: True       # 开启趋势过滤
   trend_confirmation_bars: 5    # 5（保持）
   use_rebound_filter: True    # 是否启用反弹过滤
 
   # 仓位参数（推荐组合优化）
-  max_position_ratio: 0.25     # 0.20→0.25（25%仓位）
+  max_position_ratio: 0.15     # 0.25→0.15（降低仓位减少回撤）
 
 # 回测参数
 backtest_params:

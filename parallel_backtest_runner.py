@@ -496,6 +496,8 @@ def run_parallel_backtest_with_config(
     initial_cash: float = 20000.0,
     quiet: bool = False,
     max_workers: Optional[int] = None,
+    dynamic_split: bool = False,
+    seed: Optional[int] = None,
 ):
     """
     并行回测运行入口函数
@@ -523,7 +525,11 @@ def run_parallel_backtest_with_config(
         strategy_name_for_log = strategy_name
 
     # 加载数据
-    train_data, val_data = load_cached_data(max_stocks=max_stocks)
+    train_data, val_data = load_cached_data(
+        max_stocks=max_stocks,
+        dynamic_split=dynamic_split,
+        seed=seed,
+    )
 
     if train_only:
         val_data = {}
